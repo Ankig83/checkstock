@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: checkstock
+      POSTGRES_PASSWORD: checkstock
+      POSTGRES_DB: checkstock
+    ports:
+      - "5432:5432"
+    volumes:
+      - checkstock_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U checkstock -d checkstock"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://checkstock:checkstock@postgres:5432/checkstock
+      SEED_ON_STARTUP: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  checkstock_pg:

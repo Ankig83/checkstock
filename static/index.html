@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CheckStock — где сейчас товар</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <div>
+        <p class="brand">CheckStock</p>
+        <h1>Где сейчас товар</h1>
+        <p class="sub" id="store-name">Загрузка…</p>
+      </div>
+      <button type="button" class="ghost" data-action="reset">Тестовые данные</button>
+    </div>
+    <div class="wrap">
+      <div id="notice" class="notice" hidden></div>
+      <p id="recon" class="recon"></p>
+      <nav class="tabs" aria-label="Разделы">
+        <button type="button" data-tab="stock" aria-selected="true">Остатки</button>
+        <button type="button" data-tab="moves" aria-selected="false">Склады и движения</button>
+        <button type="button" data-tab="ship" aria-selected="false">Отправки FBS и FBO</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section data-panel="stock">
+      <h2>Остатки по артикулам и складам</h2>
+      <p class="hint">В ячейке склада: физически, доступно, резерв FBS. Доступно = физически − резерв. Архивный склад остаётся в таблице.</p>
+      <div id="stock-table" class="table-wrap"></div>
+      <h2>Где числится товар</h2>
+      <div id="where-stock" class="where"></div>
+    </section>
+
+    <section data-panel="moves" hidden>
+      <h2>Склады фулфилмента</h2>
+      <p class="hint">Удаление прячет склад в архив: остатки и история не стираются, новые отгрузки с него закрыты.</p>
+      <div id="warehouses" class="cards"></div>
+
+      <div class="grid-2">
+        <form id="form-warehouse" class="card">
+          <h3>Новый склад</h3>
+          <label>Название
+            <input name="name" maxlength="200" required placeholder="Запад">
+          </label>
+          <button type="submit">Добавить склад</button>
+        </form>
+
+        <form id="form-receipt" class="card">
+          <h3>Приход</h3>
+          <label>Склад
+            <select name="warehouse_id" required></select>
+          </label>
+          <label>Товар
+            <select name="product_id" required></select>
+          </label>
+          <label>Количество, шт.
+            <input name="qty" type="number" min="1" step="1" required>
+          </label>
+          <button type="submit">Оприходовать</button>
+        </form>
+      </div>
+
+      <form id="form-transfer" class="card">
+        <h3>Перемещение между ФФ</h3>
+        <p class="hint">Товар списывается с выбранного склада сразу и числится в пути, пока его не примут. Резерв FBS так не перевезти.</p>
+        <div class="fields">
+          <label>Откуда
+            <select name="from_warehouse_id" required></select>
+          </label>
+          <label>Куда
+            <select name="to_warehouse_id" required></select>
+          </label>
+          <label>Товар
+            <select name="product_id" required></select>
+          </label>
+          <label>Количество, шт.
+            <input name="qty" type="number" min="1" step="1" required>
+          </label>
+        </div>
+        <button type="submit">Отправить</button>
+      </form>
+
+      <h2>В пути между складами</h2>
+      <div id="transfers" class="queue"></div>
+
+      <h2>Где числится товар</h2>
+      <div id="where-moves" class="where"></div>
+    </section>
+
+    <section data-panel="ship" hidden>
+      <h2>FBS и FBO</h2>
+      <p class="hint">Резерв FBS не уменьшает физический остаток, но блокирует его до отправки или отмены. FBO до приёмки числится в пути, после приёмки — на маркетплейсе. Если на выбранном складе не хватает, другой склад сам не списывается.</p>
+
+      <div class="grid-2">
+        <form id="form-reserve" class="card">
+          <h3>Резерв FBS</h3>
+          <label>Склад
+            <select name="warehouse_id" required></select>
+          </label>
+          <label>Товар
+            <select name="product_id" required></select>
+          </label>
+          <label>Количество, шт.
+            <input name="qty" type="number" min="1" step="1" required>
+          </label>
+          <button type="submit">Зарезервировать</button>
+        </form>
+
+        <form id="form-fbo" class="card">
+          <h3>Отправка FBO</h3>
+          <label>Склад
+            <select name="warehouse_id" required></select>
+          </label>
+          <label>Товар
+            <select name="product_id" required></select>
+          </label>
+          <label>Количество, шт.
+            <input name="qty" type="number" min="1" step="1" required>
+          </label>
+          <button type="submit">Отправить на маркетплейс</button>
+        </form>
+      </div>
+
+      <h2>Активные резервы FBS</h2>
+      <div id="reservations" class="queue"></div>
+
+      <h2>В пути на маркетплейс</h2>
+      <div id="fbo" class="queue"></div>
+
+      <h2>Едут к клиенту</h2>
+      <div id="fbs" class="queue"></div>
+    </section>
+
+    <section class="history-block">
+      <h2>История операций</h2>
+      <div class="table-wrap history">
+        <table>
+          <thead>
+            <tr>
+              <th>Время</th>
+              <th>Операция</th>
+              <th>Товар</th>
+              <th>Сколько</th>
+              <th>Откуда</th>
+              <th>Куда</th>
+            </tr>
+          </thead>
+          <tbody id="history"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
